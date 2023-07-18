@@ -1,0 +1,9 @@
+.vs
+*.suo
+bin
+out
+obj
+[Dd]ebug
+[Rr]elease
+packages
+*.user
