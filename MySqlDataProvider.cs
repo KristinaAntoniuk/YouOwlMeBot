@@ -16,26 +16,32 @@ public class MySqlDataProvider{
 
     public MySqlDataProvider() : this("127.0.0.1", "financedb", "root", "admin"){}
 
-    public void CloseConnection(){
-        if (connection != null){
-            connection.Close();
-        }
-    }
-
     public object? GetUserIDByUsername(string username){
-        connection.Open();
-        MySqlCommand command =  new MySqlCommand("SELECT ID FROM User WHERE Name = \'" + username + "\'", connection);
-        MySqlDataReader reader = command.ExecuteReader();
-        object? result = null;
-        while (reader.Read()){
-            result = reader.GetValue(0);
+        try{
+            connection.Open();
+            MySqlCommand command =  new MySqlCommand("SELECT ID FROM User WHERE Name = \'" + username + "\'", connection);
+            MySqlDataReader reader = command.ExecuteReader();
+            object? result = null;
+            while (reader.Read()){
+                result = reader.GetValue(0);
+            }
+            connection.Close();
+            return result;
         }
-        return result;
+        catch (Exception ex){
+            throw ex;
+        }
     }
 
-    ~MySqlDataProvider()
-    {
-        connection.Close();
+    public bool AddUser(string username){
+        try{
+            connection.Open();
+            MySqlCommand command =  new MySqlCommand("INSERT INTO `financedb`.`user` (`Name`) VALUES (" + username + ");");
+            int rows = command.ExecuteNonQuery();
+            return rows > 0;
+        }
+        catch (Exception ex){
+            throw ex;
+        }
     }
-
 }
