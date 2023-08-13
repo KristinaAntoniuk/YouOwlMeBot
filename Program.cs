@@ -1,7 +1,6 @@
 ﻿using Telegram.Bot;
-using Telegram.Bot.Types;
 using Telegram.Bot.Polling;
-using MySqlConnector;
+using Telegram.Bot.Types;
 
 namespace misha_kris_finance_bot
 {
@@ -11,7 +10,7 @@ namespace misha_kris_finance_bot
         static bool addingTransaction = false;
         static string? storeName = null;
         static decimal amount = 0;
-        static string? userName = null;
+        static string? userName;
 
         public static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
@@ -29,27 +28,33 @@ namespace misha_kris_finance_bot
                             amount = 0;
                             break;
                         default:
-                        if (addingTransaction){
+                        if (addingTransaction)
+                        {
                             decimal amount;
-                            if(Decimal.TryParse(message.Text, out amount)){
-                                using (MySqlConnection connection = new MySqlConnection("Server=127.0.0.1;User ID=root;Password=admin;Database=financedb")){
-                                    connection.Open();
-                                    MySqlCommand command = new MySqlCommand("SELECT ID FROM User WHERE Name = \'" + userName + "\'", connection);
-                                    MySqlDataReader reader = command.ExecuteReader();
-                                    object result = null;
-                                    while (reader.Read()){
-                                        result = reader.GetValue(0);
+                            if(Decimal.TryParse(message.Text, out amount))
+                            {
+                                MySqlDataProvider dataProvider = new MySqlDataProvider();
+                                
+                                int? userID = dataProvider.GetUserIDByUsername(userName);
+                                if (userID == null)
+                                {
+                                    bool success = dataProvider.AddUser(userName);
+                                    if (success)
+                                    {
+                                        userID = dataProvider.GetUserIDByUsername(userName);
                                     }
-                                    //Add new user if doesn't exist
-                                    //Add transaction
-                                };
-                                //Here we need to add it to the DB
-                                await botClient.SendTextMessageAsync(message.Chat, 
-                                            String.Format("Record {0} - {1} has been saved.", storeName, amount.ToString()));
-                                userName = null;
-                                addingTransaction = false;
-                                storeName = null;
-                                amount = 0;
+                                }
+                                        
+                                bool successTran = dataProvider.AddTransaction(userID, storeName, amount);
+                                if (successTran)
+                                {
+                                    await botClient.SendTextMessageAsync(message.Chat,
+                                    String.Format("Record {0} - {1} has been saved.", storeName, amount.ToString()));
+                                    userName = null;
+                                    addingTransaction = false;
+                                    storeName = null;
+                                    amount = 0;
+                                }
                             }
                             else{
                                 storeName = message.Text;
