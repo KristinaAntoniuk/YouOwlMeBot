@@ -1,81 +1,60 @@
-﻿using MySqlConnector;
+﻿using misha_kris_finance_bot;
+using misha_kris_finance_bot.Models;
+
 public class MySqlDataProvider
 {
-    
-    private string connectionString;
 
-    public MySqlDataProvider(string host, string schema, string username, string password)
+    private DataContext dataContext;
+
+    public MySqlDataProvider()
     {
-        this.connectionString = "Server=" + host + ";User ID=" + username + ";Password=" + password + ";Database=" + schema;
+        dataContext = new DataContext();
     }
-
-    public MySqlDataProvider(string schema, string username, string password) : this ("127.0.0.1", schema, username, password){}
-
-    public MySqlDataProvider(string username, string password) : this("127.0.0.1", "financedb", username, password){}
-
-    public MySqlDataProvider() : this("127.0.0.1", "financedb", "root", "admin"){}
 
     public int? GetUserIDByUsername(string? username)
     {
-        if (username == null) return null;
-        try
+        if (username == null) {  return null; }
+        else
         {
-            object? result = null;
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
-            {
-                connection.Open();
-                MySqlCommand command = new MySqlCommand("SELECT ID FROM financedb.user WHERE username = '" + username + "'", connection);
-                MySqlDataReader reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    result = reader.GetValue(0);
-                }
-            }
-            return result == null ? null : Convert.ToInt32(result);
-        }
-        catch (Exception ex){
-            throw ex;
-        }
-    }
-    public bool AddTransaction(int? userID, string? store, decimal? amount)
-    {
-        if (userID == null || store == null || amount == null) return false;
-        try
-        {
-            int rows = 0;
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
-            {
-                connection.Open();
-                MySqlCommand command = new MySqlCommand("INSERT INTO `financedb`.`transaction` (`UserID`,`Date`,`Store`,`Amount`) VALUES ('" + userID + "', '" + DateTime.Now.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss") + "', '" + store + "', '" + amount + "');", connection);
-                rows = command.ExecuteNonQuery();
-            }
-                
-            return rows > 0;
-        }
-        catch (Exception ex)
-        {
-            throw ex;
+            User? user = dataContext.Users.FirstOrDefault(x => x.Username == username);
+            return user?.Id;
         }
     }
 
-    public bool AddUser(string? username)
+    public int? AddUser(string? username)
     {
-        if (username == null) return false;
-        try
+        if (username == null) { return null; }
+        else
         {
-            int rows = 0;
-
-            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            User user = new User()
             {
-                connection.Open();
-                MySqlCommand command = new MySqlCommand("INSERT INTO `financedb`.`user` (`username`) VALUES ( '" + username + "');", connection);
-                rows = command.ExecuteNonQuery();
-            }
-                
-            return rows > 0;
+                Username = username
+            };
+            dataContext.Users.Add(user);
+            dataContext.SaveChanges();
+
+            return GetUserIDByUsername(username);
         }
-        catch (Exception ex){
-            throw ex;
+    }
+
+    public int? AddTransaction (Transaction? transaction)
+    {
+        if (transaction == null) { return null; }
+        else
+        {
+            dataContext.Transactions.Add(transaction);
+            dataContext.SaveChanges();
+            return GetTransactionByGuid(transaction.Guid);
+        }
+    }
+
+    public int? GetTransactionByGuid(Guid? guid)
+    {
+        if (guid == null) { return null;}
+        else
+        {
+            Transaction? transaction = dataContext.Transactions.FirstOrDefault(x => x.Guid == guid);
+            return transaction?.Id;
         }
     }
 }

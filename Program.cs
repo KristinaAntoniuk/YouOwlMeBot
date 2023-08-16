@@ -6,7 +6,7 @@ namespace misha_kris_finance_bot
 {
     internal class Program
     {
-        static ITelegramBotClient bot = new TelegramBotClient("");
+        static ITelegramBotClient bot = new TelegramBotClient("6274015108:AAHun_w1_CYM6SYRxVyxa0TJdfGF6jqcmd8");
         static bool addingTransaction = false;
         static string? storeName = null;
         static decimal amount = 0;
@@ -31,32 +31,47 @@ namespace misha_kris_finance_bot
                         if (addingTransaction)
                         {
                             decimal amount;
-                            if(Decimal.TryParse(message.Text, out amount))
+                            if (Decimal.TryParse(message.Text, out amount))
                             {
                                 MySqlDataProvider dataProvider = new MySqlDataProvider();
-                                
-                                int? userID = dataProvider.GetUserIDByUsername(userName);
-                                if (userID == null)
+
+                                int? userId = dataProvider.GetUserIDByUsername(userName);
+
+                                if (userId == null)
                                 {
-                                    bool success = dataProvider.AddUser(userName);
-                                    if (success)
-                                    {
-                                        userID = dataProvider.GetUserIDByUsername(userName);
-                                    }
+                                    userId = dataProvider.AddUser(userName);
                                 }
-                                        
-                                bool successTran = dataProvider.AddTransaction(userID, storeName, amount);
-                                if (successTran)
+
+                                Models.Transaction transaction = new Models.Transaction()
+                                {
+                                    UserID = userId,
+                                    Store = storeName,
+                                    Amount = amount,
+                                    Date = DateTime.Now,
+                                    Guid = Guid.NewGuid()
+                                };
+
+                                int? transactionId = dataProvider.AddTransaction(transaction);
+
+                                if (transactionId != null)
                                 {
                                     await botClient.SendTextMessageAsync(message.Chat,
-                                    String.Format("Record {0} - {1} has been saved.", storeName, amount.ToString()));
-                                    userName = null;
-                                    addingTransaction = false;
-                                    storeName = null;
-                                    amount = 0;
+                                                                    String.Format(Messages.RecordHasBeenSaved, storeName, amount.ToString()));
                                 }
+                                else
+                                {
+                                    await botClient.SendTextMessageAsync(message.Chat,
+                                                                String.Format(Messages.RecordHasNotBennSaved, storeName, amount.ToString()));
+
+                                }
+
+                                userName = null;
+                                addingTransaction = false;
+                                storeName = null;
+                                amount = 0;
                             }
-                            else{
+                            else
+                            {
                                 storeName = message.Text;
                                 await botClient.SendTextMessageAsync(message.Chat, "Amount:");
                             }
@@ -76,13 +91,13 @@ namespace misha_kris_finance_bot
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Запущен бот " + bot.GetMeAsync().Result.FirstName);
+            Console.WriteLine("Bot " + bot.GetMeAsync().Result.FirstName + " is running.");
 
             var cts = new CancellationTokenSource();
             var cancellationToken = cts.Token;
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = { }, // receive all update types
+                AllowedUpdates = { },
             };
             bot.StartReceiving(
                 HandleUpdateAsync,
