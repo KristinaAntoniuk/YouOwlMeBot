@@ -1,111 +1,53 @@
-﻿using Telegram.Bot;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types;
+using Amazon;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.Runtime;
+using Microsoft.Extensions.Options;
+using misha_kris_finance_lambda_bot;
+using misha_kris_finance_lambda_bot.Services;
+using Telegram.Bot;
 
-namespace misha_kris_finance_bot
-{
-    internal class Program
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services
+    .AddControllers()
+    .AddNewtonsoftJson();
+
+// Add AWS Lambda support. When application is run in Lambda Kestrel is swapped out as the web server with Amazon.Lambda.AspNetCoreServer. This
+// package will act as the webserver translating request and responses between the Lambda event source and ASP.NET Core.
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
+
+builder.Services.Configure<BotConfiguration>(builder.Configuration);
+builder.Services.AddTransient<IUpdateService, UpdateService>();
+
+builder.Services
+    .AddHttpClient("tgwebhook")
+    .AddTypedClient<ITelegramBotClient>((client, sp) =>
     {
-        static ITelegramBotClient bot = new TelegramBotClient("6274015108:AAHun_w1_CYM6SYRxVyxa0TJdfGF6jqcmd8");
-        static bool addingTransaction = false;
-        static string? storeName = null;
-        static decimal amount = 0;
-        static string? userName;
+        var configuration = sp.GetRequiredService<IOptionsMonitor<BotConfiguration>>();
+        return new TelegramBotClient(configuration.CurrentValue.BotToken, client);
+    });
 
-        public static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-        {
-            if(update.Type == Telegram.Bot.Types.Enums.UpdateType.Message)
-            {
-                Message? message = update.Message;
-                
-                if (message != null){
-                    switch (message.Text){
-                        case "/add":
-                            await botClient.SendTextMessageAsync(message.Chat, "Store name:");
-                            userName = message.Chat.Username;
-                            addingTransaction = true;
-                            storeName = null;
-                            amount = 0;
-                            break;
-                        default:
-                        if (addingTransaction)
-                        {
-                            decimal amount;
-                            if (Decimal.TryParse(message.Text, out amount))
-                            {
-                                MySqlDataProvider dataProvider = new MySqlDataProvider();
+AWSOptions awsOptions = new AWSOptions
+{
+    Credentials = new BasicAWSCredentials(Environment.GetEnvironmentVariable("AccessKey"),
+                                          Environment.GetEnvironmentVariable("SecretKey")),
+    Region = RegionEndpoint.EUNorth1
+};
 
-                                int? userId = dataProvider.GetUserIDByUsername(userName);
+builder.Services.AddDefaultAWSOptions(awsOptions);
+builder.Services.AddAWSService<IAmazonDynamoDB>();
+builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 
-                                if (userId == null)
-                                {
-                                    userId = dataProvider.AddUser(userName);
-                                }
-
-                                Models.Transaction transaction = new Models.Transaction()
-                                {
-                                    UserID = userId,
-                                    Store = storeName,
-                                    Amount = amount,
-                                    Date = DateTime.Now,
-                                    Guid = Guid.NewGuid()
-                                };
-
-                                int? transactionId = dataProvider.AddTransaction(transaction);
-
-                                if (transactionId != null)
-                                {
-                                    await botClient.SendTextMessageAsync(message.Chat,
-                                                                    String.Format(Messages.RecordHasBeenSaved, storeName, amount.ToString()));
-                                }
-                                else
-                                {
-                                    await botClient.SendTextMessageAsync(message.Chat,
-                                                                String.Format(Messages.RecordHasNotBennSaved, storeName, amount.ToString()));
-
-                                }
-
-                                userName = null;
-                                addingTransaction = false;
-                                storeName = null;
-                                amount = 0;
-                            }
-                            else
-                            {
-                                storeName = message.Text;
-                                await botClient.SendTextMessageAsync(message.Chat, "Amount:");
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        public static async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
-        {
-            // Некоторые действия
-            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(exception));
-        }
+var app = builder.Build();
 
 
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Bot " + bot.GetMeAsync().Result.FirstName + " is running.");
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
 
-            var cts = new CancellationTokenSource();
-            var cancellationToken = cts.Token;
-            var receiverOptions = new ReceiverOptions
-            {
-                AllowedUpdates = { },
-            };
-            bot.StartReceiving(
-                HandleUpdateAsync,
-                HandleErrorAsync,
-                receiverOptions,
-                cancellationToken
-            );
-            Console.ReadLine();
-        }
-    }
-}
+app.MapGet("/", () => "Welcome to running ASP.NET Core Minimal API on AWS Lambda");
+
+app.Run();

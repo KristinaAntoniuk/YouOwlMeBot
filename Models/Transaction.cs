@@ -1,12 +1,20 @@
-﻿namespace misha_kris_finance_bot.Models
+﻿using Amazon.DynamoDBv2.DataModel;
+
+namespace misha_kris_finance_lambda_bot.Models;
+
+[DynamoDBTable("Transaction")]
+internal class Transaction
 {
-    public class Transaction
-    {
-        public int Id { get; set; }
-        public int? UserID { get; set; }
-        public required DateTime Date { get; set; }
-        public string? Store { get; set; }
-        public required decimal Amount { get; set; }
-        public required Guid Guid { get; set; }
-    }
+    [DynamoDBHashKey("Id")]
+    public int Id { get; set; }
+    [DynamoDBProperty("UserID")]
+    public int? UserID { get; set; }
+    [DynamoDBProperty("Date")]
+    public required DateTime Date { get; set; }
+    [DynamoDBProperty("Store")]
+    public string? Store { get; set; }
+    [DynamoDBProperty("Amount")]
+    public required decimal Amount { get; set; }
+    [DynamoDBProperty("Guid")]
+    public required Guid Guid { get; set; }
 }

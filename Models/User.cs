@@ -1,8 +1,11 @@
-﻿namespace misha_kris_finance_bot.Models
+﻿using Amazon.DynamoDBv2.DataModel;
+
+namespace misha_kris_finance_lambda_bot.Models;
+[DynamoDBTable("User")]
+internal class User
 {
-    public class User
-    {
-        public int Id { get; set; }
-        public string? Username { get; set; }
-    }
+    [DynamoDBHashKey("Id")]
+    public int Id { get; set; }
+    [DynamoDBProperty("Username")]
+    public string? Username { get; set; }
 }
