@@ -3,7 +3,7 @@
 namespace YouOwlMeBot.Models;
 
 [DynamoDBTable("User")]
-internal class User
+internal class User : IModel
 {
     [DynamoDBHashKey("Guid")]
     public Guid Guid { get; set; }

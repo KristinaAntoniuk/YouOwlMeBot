@@ -4,24 +4,39 @@ using YouOwlMeBot.Models;
 
 namespace YouOwlMeBot.DataProviders
 {
-    internal class UserDataProvider : IDisposable
+    internal class UserDataProvider : IDataProvider<User>, IDisposable
     {
-        private readonly IDynamoDBContext _dynamoDBContext;
+        public IDynamoDBContext _dynamoDBContext { get; set; }
+
         internal UserDataProvider(IDynamoDBContext dynamoDBContext) 
         {
             _dynamoDBContext = dynamoDBContext;
         }
 
-        internal async Task<IEnumerable<User>> GetAllUsers()
+        public async Task<IEnumerable<User>> GetAll()
         {
             return await _dynamoDBContext.ScanAsync<User>(default).GetRemainingAsync();
         }
 
-        internal async Task<User> GetUserById(int id)
+        public async Task<User> GetByGuid(Guid? guid)
         {
-            return await _dynamoDBContext.LoadAsync<User>(id);
+            return await _dynamoDBContext.LoadAsync<User>(guid);
         }
 
+        public async void Delete(User data)
+        {
+            await _dynamoDBContext.DeleteAsync(data);
+        }
+
+        public async Task Save(User data)
+        {
+            await _dynamoDBContext.SaveAsync(data);
+        }
+
+        public void Dispose()
+        {
+            _dynamoDBContext.Dispose();
+        }
         internal async Task<IEnumerable<User>> GetUserByUsername(string username)
         {
             IEnumerable<ScanCondition> conditions = new List<ScanCondition>
@@ -42,27 +57,7 @@ namespace YouOwlMeBot.DataProviders
                 FirstName = tgUser.FirstName
             };
 
-            await SaveUser(user);
-        }
-
-        internal async void DeleteUser(User user)
-        {
-            await _dynamoDBContext.DeleteAsync(user);
-        }
-
-        internal async void UpdateUser(User user)
-        {
-            await SaveUser(user);
-        }
-
-        private async Task SaveUser(User user)
-        {
-            await _dynamoDBContext.SaveAsync(user);
-        }
-
-        public void Dispose()
-        {
-            _dynamoDBContext.Dispose();
+            await Save(user);
         }
     }
 }
