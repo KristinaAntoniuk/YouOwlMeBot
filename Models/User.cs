@@ -1,6 +1,6 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
-namespace misha_kris_finance_lambda_bot.Models;
+namespace YouOwlMeBot.Models;
 [DynamoDBTable("User")]
 internal class User
 {

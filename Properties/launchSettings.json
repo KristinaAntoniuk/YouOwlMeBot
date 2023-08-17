@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "misha_kris_finance_bot": {
+    "YouOwlMeBot": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

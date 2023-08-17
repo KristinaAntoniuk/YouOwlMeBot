@@ -2,84 +2,83 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace misha_kris_finance_lambda_bot.Services
+namespace YouOwlMeBot.Services;
+
+public interface IUpdateService
 {
-    public interface IUpdateService
+    Task HandleUpdate(Update update, IDynamoDBContext context, CancellationToken cancellationToken = default);
+}
+internal class UpdateService : IUpdateService
+{
+    private const string WelcomeMessage = "Hello Misha!";
+    
+    private readonly ITelegramBotClient _botClient;
+
+    private readonly ILogger<UpdateService> _logger;
+
+    public UpdateService(ITelegramBotClient botClient,
+        ILogger<UpdateService> logger)
     {
-        Task HandleUpdate(Update update, IDynamoDBContext context, CancellationToken cancellationToken = default);
+        _botClient = botClient;
+        _logger = logger;
     }
-    internal class UpdateService : IUpdateService
+
+    public async Task HandleUpdate(Update update, IDynamoDBContext context, CancellationToken cancellationToken = default)
     {
-        private const string WelcomeMessage = "Hello Misha!";
-        
-        private readonly ITelegramBotClient _botClient;
-
-        private readonly ILogger<UpdateService> _logger;
-
-        public UpdateService(ITelegramBotClient botClient,
-            ILogger<UpdateService> logger)
+        var message = update?.Message?.Text;
+        if (string.IsNullOrEmpty(message))
         {
-            _botClient = botClient;
-            _logger = logger;
+            return;
         }
 
-        public async Task HandleUpdate(Update update, IDynamoDBContext context, CancellationToken cancellationToken = default)
+        try
         {
-            var message = update?.Message?.Text;
-            if (string.IsNullOrEmpty(message))
+            if (message.Equals("/start") == true)
             {
+                await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
+                    WelcomeMessage,
+                    cancellationToken: cancellationToken);
+
                 return;
             }
 
             try
             {
-                //if (message.Equals("/start") == true)
-                //{
-                //    await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                //        WelcomeMessage,
-                //        cancellationToken: cancellationToken);
+                //var response = await _translatorClient.Translate(message, cancellationToken);
+                //var translated = response?.Contents?.Translated;
 
-                //    return;
+                //if (string.IsNullOrEmpty(translated))
+                //{
+                //    throw new Exception("Translated content is null or empty");
                 //}
 
-                try
-                {
-                    //var response = await _translatorClient.Translate(message, cancellationToken);
-                    //var translated = response?.Contents?.Translated;
+                List<Models.User>? users = await context.ScanAsync<Models.User>(default).GetRemainingAsync();
 
-                    //if (string.IsNullOrEmpty(translated))
-                    //{
-                    //    throw new Exception("Translated content is null or empty");
-                    //}
-
-                    List<Models.User>? users = await context.ScanAsync<Models.User>(default).GetRemainingAsync();
-
-                    foreach(Models.User user in  users)
-                    {
-                        await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                        user.Username,
-                        replyToMessageId: update.Message.MessageId,
-                        cancellationToken: cancellationToken);
-                    }
-                    
-                }
-                catch (Exception ex)
+                foreach(Models.User user in  users)
                 {
                     await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                        ex.Message,
-                        replyToMessageId: update.Message.MessageId,
-                        cancellationToken: cancellationToken);
-
-                    throw;
+                    user.Username,
+                    replyToMessageId: update.Message.MessageId,
+                    cancellationToken: cancellationToken);
                 }
+                
             }
-            catch (Exception exc)
+            catch (Exception ex)
             {
-                _logger.LogError(exc, "Unknown error", new
-                {
-                    Message = message
-                });
+                await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
+                    ex.Message,
+                    replyToMessageId: update.Message.MessageId,
+                    cancellationToken: cancellationToken);
+
+                throw;
             }
+        }
+        catch (Exception exc)
+        {
+            _logger.LogError(exc, "Unknown error", new
+            {
+                Message = message
+            });
         }
     }
 }

@@ -4,8 +4,8 @@ using Amazon.DynamoDBv2.DataModel;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.Runtime;
 using Microsoft.Extensions.Options;
-using misha_kris_finance_lambda_bot;
-using misha_kris_finance_lambda_bot.Services;
+using YouOwlMeBot;
+using YouOwlMeBot.Services;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);

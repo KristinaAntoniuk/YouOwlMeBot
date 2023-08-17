@@ -46,6 +46,6 @@ If already installed check if new version is available.
 
 Deploy application
 ```
-    cd "misha_kris_finance_bot/src/misha_kris_finance_bot"
+    cd "YouOwlMeBot/src/YouOwlMeBot"
     dotnet lambda deploy-serverless
 ```

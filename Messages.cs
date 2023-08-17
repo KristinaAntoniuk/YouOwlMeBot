@@ -1,4 +1,4 @@
-﻿namespace misha_kris_finance_lambda_bot;
+﻿namespace YouOwlMeBot;
 
 public static class Messages
 {

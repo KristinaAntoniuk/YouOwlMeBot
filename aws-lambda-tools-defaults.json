@@ -9,9 +9,9 @@
     "profile"     : "Developer",
     "region"      : "eu-north-1",
     "configuration" : "Release",
-    "s3-prefix"     : "misha_kris_finance_bot/",
+    "s3-prefix"     : "YouOwlMeBot/",
     "template"      : "serverless.template",
     "template-parameters" : "",
     "s3-bucket"           : "awsbucketdefault",
-    "stack-name"          : "mishakrisfinancebot"
+    "stack-name"          : "YouOwlMeBot"
 }

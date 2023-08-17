@@ -8,7 +8,7 @@
     "AspNetCoreFunction": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
-        "Handler": "misha_kris_finance_bot",
+        "Handler": "YouOwlMeBot",
         "Runtime": "dotnet6",
         "CodeUri": "",
         "MemorySize": 256,
