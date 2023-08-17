@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using YouOwlMeBot.DataProviders;
 
 namespace YouOwlMeBot.Services;
 
@@ -10,11 +11,15 @@ public interface IUpdateService
 }
 internal class UpdateService : IUpdateService
 {
-    private const string WelcomeMessage = "Hello Misha!";
-    
     private readonly ITelegramBotClient _botClient;
 
     private readonly ILogger<UpdateService> _logger;
+
+    static bool addingTransaction = false;
+    static bool addingProfile = false;
+    static string? storeName = null;
+    static decimal amount = 0;
+    static string? username;
 
     public UpdateService(ITelegramBotClient botClient,
         ILogger<UpdateService> logger)
@@ -25,52 +30,49 @@ internal class UpdateService : IUpdateService
 
     public async Task HandleUpdate(Update update, IDynamoDBContext context, CancellationToken cancellationToken = default)
     {
-        var message = update?.Message?.Text;
-        if (string.IsNullOrEmpty(message))
-        {
-            return;
-        }
+        Message? message = update?.Message;
 
         try
         {
-            if (message.Equals("/start") == true)
+            if (message != null)
             {
-                await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                    WelcomeMessage,
-                    cancellationToken: cancellationToken);
-
-                return;
-            }
-
-            try
-            {
-                //var response = await _translatorClient.Translate(message, cancellationToken);
-                //var translated = response?.Contents?.Translated;
-
-                //if (string.IsNullOrEmpty(translated))
-                //{
-                //    throw new Exception("Translated content is null or empty");
-                //}
-
-                List<Models.User>? users = await context.ScanAsync<Models.User>(default).GetRemainingAsync();
-
-                foreach(Models.User user in  users)
+                switch (message.Text)
                 {
-                    await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                    user.Username,
-                    replyToMessageId: update.Message.MessageId,
-                    cancellationToken: cancellationToken);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
-                    ex.Message,
-                    replyToMessageId: update.Message.MessageId,
-                    cancellationToken: cancellationToken);
+                    case "/start":
+                        await _botClient.SendTextMessageAsync(update.Message.Chat.Id,
+                                                              Messages.YourProfileName,
+                                                              cancellationToken: cancellationToken);
+                        username = message.Chat.Username;
+                        addingTransaction = false;
+                        addingProfile = true;
+                        storeName = null;
+                        amount = 0;
+                        break;
+                    case "/add":
+                        break;
+                    default:
+                        if (addingTransaction)
+                        {
+                        }
+                        if (addingProfile)
+                        {
+                            Guid? userID = null;
+                            using (UserDataProvider userDataProvider = new UserDataProvider(context))
+                            {
+                                userID = userDataProvider.GetUserByUsername(username).Result?.FirstOrDefault()?.Guid;
+                                if (userID == null)
+                                {
+                                    userDataProvider.AddUser(message.From);
+                                    userID = userDataProvider.GetUserByUsername(username).Result?.FirstOrDefault()?.Guid;
+                                }
+                                else
+                                {
 
-                throw;
+                                }
+                            }
+                        }
+                        break;
+                }
             }
         }
         catch (Exception exc)
