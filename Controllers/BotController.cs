@@ -10,19 +10,17 @@ namespace YouOwlMeBot.Controllers;
 public class BotController : ControllerBase
 {
     private readonly IUpdateService _updateService;
-    private readonly IDynamoDBContext _context;
 
-    public BotController(IUpdateService updateService, IDynamoDBContext context)
+    public BotController(IUpdateService updateService)
     {
         _updateService = updateService;
-        _context = context;
     }
 
     [HttpPost]
     public async Task<IActionResult> HandleUpdate([FromBody] Update update,
         CancellationToken cancellationToken = default)
     {
-        await _updateService.HandleUpdate(update, _context, cancellationToken);
+        await _updateService.HandleUpdate(update, cancellationToken);
         return Ok();
     }
 }

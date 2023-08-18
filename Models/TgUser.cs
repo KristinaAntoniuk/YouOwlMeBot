@@ -2,11 +2,11 @@
 
 namespace YouOwlMeBot.Models;
 
-[DynamoDBTable("User")]
-internal class User : IModel
+[DynamoDBTable("TgUser")]
+internal class TgUser : IModel
 {
-    [DynamoDBHashKey("Guid")]
-    public Guid Guid { get; set; }
+    [DynamoDBHashKey("Id")]
+    public Guid Id { get; set; }
     [DynamoDBProperty("Username")]
     public string? Username { get; set; }
     [DynamoDBProperty("FirstName")]
