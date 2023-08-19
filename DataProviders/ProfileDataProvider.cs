@@ -38,15 +38,16 @@ internal class ProfileDataProvider : ContextProvider, IDataProvider<Profile>
         return await _dynamoDBContext.ScanAsync<Profile>(conditions).GetRemainingAsync();
     }
 
-    internal async Task<Guid?> AddProfile(string name)
+    internal async Task<Profile> AddProfile(string name)
     {
         Profile profile = new Profile()
         {
             Id = Guid.NewGuid(),
-            Name = name
+            Name = name,
+            RegistrationToken = Guid.NewGuid()
         };
 
         await Save(profile);
-        return profile.Id;
+        return profile;
     }
 }

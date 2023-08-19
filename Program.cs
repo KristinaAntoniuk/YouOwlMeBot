@@ -21,6 +21,8 @@ builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 builder.Services.Configure<BotConfiguration>(builder.Configuration);
 builder.Services.AddTransient<IUpdateService, UpdateService>();
+builder.Services.AddTransient<ITgUserService, TgUserService>();
+builder.Services.AddTransient<IProfileService, ProfileService>();
 
 builder.Services
     .AddHttpClient("tgwebhook")

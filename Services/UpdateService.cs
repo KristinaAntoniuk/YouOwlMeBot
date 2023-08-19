@@ -1,35 +1,32 @@
-﻿using Amazon.DynamoDBv2.DataModel;
-using System;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Types;
-using YouOwlMeBot.DataProviders;
 using YouOwlMeBot.Models;
 
 namespace YouOwlMeBot.Services;
-
-public interface IUpdateService
-{
-    Task HandleUpdate(Update update, CancellationToken cancellationToken = default);
-}
 internal class UpdateService : IUpdateService
 {
     private readonly ITelegramBotClient _botClient;
-    private readonly IDynamoDBContext _dbContext;
+    private readonly ITgUserService _userService;
+    private readonly IProfileService _profileService;
 
     private readonly ILogger<UpdateService> _logger;
 
     private static bool addingTransaction = false;
     private static bool addingProfile = false;
+    private static bool addingRegistrationToken = false;
     private static Guid? userId = null;
     private static TgUserProfile? userProfile = null;
+    private static Profile? profile = null;
 
     public UpdateService(ITelegramBotClient botClient,
-        IDynamoDBContext dbContext,
-        ILogger<UpdateService> logger)
+                         ITgUserService userService,
+                         IProfileService profileService,
+                         ILogger<UpdateService> logger)
     {
         _botClient = botClient;
         _logger = logger;
-        _dbContext = dbContext;
+        _userService = userService;
+        _profileService = profileService;
     }
 
     public async Task HandleUpdate(Update update, CancellationToken cancellationToken = default)
@@ -46,8 +43,8 @@ internal class UpdateService : IUpdateService
                 {
                     case "/start":
                         ResetFlags();
-                        userId ??= GetUserId(message.From);
-                        userProfile ??= GetUserProfile(userId);
+                        userId ??= _userService.GetUserId(message.From).Result;
+                        userProfile ??= _profileService.GetUserProfile(userId).Result;
                         await SendMessage(String.Format(Messages.Welcome, message.From?.FirstName));
                         break;
                     case "/addtransaction":
@@ -55,12 +52,12 @@ internal class UpdateService : IUpdateService
                     case "/setnewprofile":
                         await SendMessage(Messages.YourProfileName);
                         addingProfile = true;
-                        userId ??= GetUserId(message.From);
-                        userProfile ??= GetUserProfile(userId);
+                        userId ??= _userService.GetUserId(message.From).Result;
+                        userProfile ??= _profileService.GetUserProfile(userId).Result;
                         break;
                     case "/showprofile":
-                        userId ??= GetUserId(message.From);
-                        userProfile ??= GetUserProfile(userId);
+                        userId ??= _userService.GetUserId(message.From).Result;
+                        userProfile ??= _profileService.GetUserProfile(userId).Result;
 
                         if (userProfile == null)
                         {
@@ -68,7 +65,7 @@ internal class UpdateService : IUpdateService
                         }
                         else
                         {
-                            string? profileName = GetProfileNameById(userProfile.ProfileId);
+                            string? profileName = _profileService.GetProfileNameById(userProfile.ProfileId).Result;
                             if (String.IsNullOrEmpty(profileName))
                             {
                                 await SendMessage(Messages.ProfileDoesNotExist);
@@ -85,27 +82,49 @@ internal class UpdateService : IUpdateService
                         }
                         if (addingProfile)
                         {
-                            string profileName = message.Text.Trim();
-                            (bool newProfile, Guid? profileId) = CreateProfile(profileName);
-                            userProfile = MapUserToTheProfile(userId, profileId);
 
-                            if (newProfile)
+                            if (addingRegistrationToken)
                             {
-                                await SendMessage(String.Format(Messages.ProfileHasBeenCreated, profileName));
-                            }
-
-                            if (profileId == null)
-                            {
-                                await SendMessage(String.Format(Messages.ProfileHasNotBeenCreated, profileName));
-                            }
-
-                            if (userProfile != null)
-                            {
-                                await SendMessage(String.Format(Messages.UserHasBeenAddedToTheProfile, profileName));
+                                string registrationToken = message.Text.Trim();
+                                if (!String.Equals(profile?.RegistrationToken.ToString(), registrationToken))
+                                {
+                                    await SendMessage(Messages.WrongRegistrationToken);
+                                    ResetFlags();
+                                    break;
+                                }
                             }
                             else
                             {
-                                await SendMessage(String.Format(Messages.UserHasNotBeenAddedToTheProfile, profileName));
+                                string profileName = message.Text.Trim();
+                                (bool newProfile, profile) = _profileService.CreateProfile(profileName).Result;
+
+                                if (newProfile)
+                                {
+                                    await SendMessage(String.Format(Messages.ProfileHasBeenCreated, profile.Name, profile.RegistrationToken));
+                                    await SendMessage(message: profile.RegistrationToken.ToString());
+                                }
+                                else
+                                {
+                                    await SendMessage(String.Format(Messages.GetProfileRegistrationToken, profileName));
+                                    addingRegistrationToken = true;
+                                    break;
+                                }
+
+                                if (profile == null)
+                                {
+                                    await SendMessage(String.Format(Messages.ProfileHasNotBeenCreated, profileName));
+                                }
+                            }
+
+                            userProfile = _profileService.MapUserToTheProfile(userId, profile?.Id).Result;
+
+                            if (userProfile != null)
+                            {
+                                await SendMessage(String.Format(Messages.UserHasBeenAddedToTheProfile, profile?.Name));
+                            }
+                            else
+                            {
+                                await SendMessage(String.Format(Messages.UserHasNotBeenAddedToTheProfile, profile?.Name));
                             }
                             ResetFlags();
                         }
@@ -134,60 +153,7 @@ internal class UpdateService : IUpdateService
         addingProfile = false;
         userId = null;
         userProfile = null;
-    }
-
-    private Guid? GetUserId(User? tgUser)
-    {
-        if (tgUser == null) throw new Exception(Messages.SenderIsEmpty);
-        if (String.IsNullOrEmpty(tgUser.Username)) throw new Exception(Messages.UserNameCanNotBeEmpty);
-
-        TgUserDataProvider userDataProvider = new TgUserDataProvider(_dbContext);
-        
-        userId = userDataProvider.GetByUsername(tgUser.Username).Result?.FirstOrDefault()?.Id;
-
-        return userId ?? userDataProvider.AddUser(tgUser).Result;
-        
-    }
-
-    private TgUserProfile? GetUserProfile(Guid? userId)
-    {
-        if (userId == null) throw new Exception(Messages.SenderIsEmpty);
-
-        TgUserProfileDataProvider userProfileDataProvider = new TgUserProfileDataProvider(_dbContext);
-        
-        return userProfileDataProvider.GetByUserId(userId.GetValueOrDefault()).Result?.FirstOrDefault();
-    }
-
-    private string? GetProfileNameById(Guid? profileId)
-    {
-        if (profileId == null) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
-
-        ProfileDataProvider profileDataProvider = new ProfileDataProvider(_dbContext);
-
-        return profileDataProvider.GetById(profileId.GetValueOrDefault()).Result?.Name;
-    }
-
-    private (bool newProfile, Guid? profileId) CreateProfile(string? profileName)
-    {
-        if (profileName == null) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
-
-        ProfileDataProvider profileDataProvider = new ProfileDataProvider(_dbContext);
-        Guid? profileId = profileDataProvider.GetByName(profileName).Result?.FirstOrDefault()?.Id;
-
-        if (profileId == null)
-        {
-            profileId = profileDataProvider.AddProfile(profileName).Result;
-            return (newProfile: true, profileId: profileId);
-        }
-        else return (newProfile: false, profileId: profileId);
-    }
-
-    private TgUserProfile MapUserToTheProfile(Guid? userId, Guid? profileId)
-    {
-        if (userId == null || profileId == null) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
-
-        TgUserProfileDataProvider userProfileDataProvider = new TgUserProfileDataProvider(_dbContext);
-        return userProfileDataProvider.AddUserProfile(userId.GetValueOrDefault(),
-                                                      profileId.GetValueOrDefault()).Result;
+        addingRegistrationToken = false;
     }
 }
+
