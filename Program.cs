@@ -4,9 +4,9 @@ using Amazon.DynamoDBv2.DataModel;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.Runtime;
 using Microsoft.Extensions.Options;
-using YouOwlMeBot;
-using YouOwlMeBot.Services;
 using Telegram.Bot;
+using YouOwlMeBot.Custom;
+using YouOwlMeBot.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +23,7 @@ builder.Services.Configure<BotConfiguration>(builder.Configuration);
 builder.Services.AddTransient<IUpdateService, UpdateService>();
 builder.Services.AddTransient<ITgUserService, TgUserService>();
 builder.Services.AddTransient<IProfileService, ProfileService>();
+builder.Services.AddTransient<ITransactionService, TransactionService>();
 
 builder.Services
     .AddHttpClient("tgwebhook")

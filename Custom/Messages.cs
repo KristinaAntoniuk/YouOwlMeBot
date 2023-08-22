@@ -1,14 +1,19 @@
-﻿namespace YouOwlMeBot;
+﻿namespace YouOwlMeBot.Custom;
 
 public static class Messages
 {
-    public static string RecordHasBeenSaved = "Record {0} - {1} has been saved.";
+    public static string PaymentHasBeenSaved = "Payment {0} - {1} has been saved.";
     public static string RecordHasNotBeenSaved = "Record {0} - {1} has NOT been saved. Try again.";
     public static string UserNameCanNotBeEmpty = "Username can not be empty.";
     public static string SenderIsEmpty = "Sender is empty.";
     public static string ArgumentsCanNotBeEmpty = "Argument can not be empty";
     public static string Welcome = "Welcome, {0}!";
     public static string CommendIsNotRecognized = "Command is not recognized";
+    public static string StoreName = "Store Name:";
+    public static string Amount = "Amount:";
+    public static string RepaymentHasBeenSaved = "Repayment has been saved.";
+    public static string NoTransactions = "There are no transactions for the selected period";
+    public static string ThereIsOnlyOneUserInTheProfile = "There is only one user mapped to the profile. Try to add at least one more to be able to count balances.";
 
     #region Profiles
     public static string YourProfileName = "Profile Name:";

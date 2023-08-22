@@ -1,4 +1,4 @@
-﻿namespace YouOwlMeBot;
+﻿namespace YouOwlMeBot.Custom;
 
 internal class BotConfiguration
 {

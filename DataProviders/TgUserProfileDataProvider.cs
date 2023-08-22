@@ -1,5 +1,6 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
+using YouOwlMeBot.Custom;
 using YouOwlMeBot.Models;
 
 namespace YouOwlMeBot.DataProviders;
@@ -35,6 +36,18 @@ internal class TgUserProfileDataProvider : ContextProvider, IDataProvider<TgUser
         IEnumerable<ScanCondition> conditions = new List<ScanCondition>
         {
             new ScanCondition("UserId", ScanOperator.Equal, userId)
+        };
+
+        return await _dynamoDBContext.ScanAsync<TgUserProfile>(conditions).GetRemainingAsync();
+    }
+
+    internal async Task<IEnumerable<TgUserProfile>> GetByProfileId(Guid profileId)
+    {
+        if (profileId == Guid.Empty) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
+
+        IEnumerable<ScanCondition> conditions = new List<ScanCondition>
+        {
+            new ScanCondition("ProfileId", ScanOperator.Equal, profileId)
         };
 
         return await _dynamoDBContext.ScanAsync<TgUserProfile>(conditions).GetRemainingAsync();
