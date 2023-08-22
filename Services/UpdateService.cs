@@ -49,8 +49,8 @@ internal class UpdateService : IUpdateService
                 {
                     case "/start":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        userId = _tgUserService.GetUserId(message.From).Result;
+                        userProfile = _profileService.GetUserProfileByUserId(userId).Result;
                         await SendMessage(String.Format(Messages.Welcome, message.From?.FirstName));
                         break;
                     case "/addpayment":
