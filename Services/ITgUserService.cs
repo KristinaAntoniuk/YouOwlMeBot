@@ -5,6 +5,6 @@ namespace YouOwlMeBot.Services;
 
 public interface ITgUserService
 {
-    Task<Guid> GetUserId(User? user);
+    Task<TgUser> GetTgUser(User? user);
     Task<string?> GetFirstNameById(Guid? userId);
 }

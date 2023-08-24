@@ -18,7 +18,7 @@ internal class UpdateService : IUpdateService
     private static bool addingProfile = false;
     private static bool addingRegistrationToken = false;
     private static string? storeName;
-    private static Guid? userId = null;
+    private static TgUser? tgUser = null;
     private static TgUserProfile? userProfile = null;
     private static Profile? profile = null;
 
@@ -49,14 +49,20 @@ internal class UpdateService : IUpdateService
                 {
                     case "/start":
                         ResetFlags();
-                        userId = _tgUserService.GetUserId(message.From).Result;
-                        userProfile = _profileService.GetUserProfileByUserId(userId).Result;
                         await SendMessage(String.Format(Messages.Welcome, message.From?.FirstName));
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         break;
                     case "/addpayment":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         if (userProfile == null)
                         {
                             await SendMessage(Messages.YouAreNotMappedToAnyProfile);
@@ -69,8 +75,11 @@ internal class UpdateService : IUpdateService
                         break;
                     case "/addrepayment":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         if (userProfile == null)
                         {
                             await SendMessage(Messages.YouAreNotMappedToAnyProfile);
@@ -83,15 +92,16 @@ internal class UpdateService : IUpdateService
                         break;
                     case "/setnewprofile":
                         ResetFlags();
-                        userProfile = null;
                         await SendMessage(Messages.YourProfileName);
                         addingProfile = true;
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
                         break;
                     case "/showprofile":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
 
                         if (userProfile == null)
                         {
@@ -110,22 +120,31 @@ internal class UpdateService : IUpdateService
                         break;
                     case "/showbalance":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         string? allBalances = await _transactionService.GetBalances(userProfile?.ProfileId, false);
                         if (!String.IsNullOrEmpty(allBalances)) await SendMessage(allBalances);
                         break;
                     case "/showlastbalance":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         string? lastBalances = await _transactionService.GetBalances(userProfile?.ProfileId, true);
                         if (!String.IsNullOrEmpty(lastBalances)) await SendMessage(lastBalances);
                         break;
                     case "/showlasttransactions":
                         ResetFlags();
-                        userId ??= _tgUserService.GetUserId(message.From).Result;
-                        userProfile ??= _profileService.GetUserProfileByUserId(userId).Result;
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
 
                         string? lastPayments = await _transactionService.GetLastPayments(userProfile?.ProfileId, 5);
 
@@ -140,14 +159,42 @@ internal class UpdateService : IUpdateService
                         }
                         break;
                     default:
-                        if (addingPayment)
+                        if (!UserChanged(message.From))
                         {
-                            if (storeName == null)
+                            if (addingPayment)
                             {
-                                storeName = message.Text.Trim();
-                                await SendMessage(Messages.Amount);
+                                if (storeName == null)
+                                {
+                                    storeName = message.Text.Trim();
+                                    await SendMessage(Messages.Amount);
+                                }
+                                else
+                                {
+                                    decimal amount;
+                                    if (Decimal.TryParse(message.Text.Trim(), out amount))
+                                    {
+                                        Transaction transaction = new Transaction()
+                                        {
+                                            Id = Guid.NewGuid(),
+                                            Amount = amount,
+                                            Date = DateTime.UtcNow,
+                                            ProfileId = userProfile?.ProfileId,
+                                            Store = storeName,
+                                            Type = (int)TransactionType.Payment,
+                                            UserId = tgUser?.Id,
+                                        };
+
+                                        bool successTran = _transactionService.AddTransaction(transaction) != null;
+                                        if (successTran)
+                                        {
+                                            await SendMessage(String.Format(Messages.PaymentHasBeenSaved, storeName, amount.ToString()));
+                                            ResetFlags();
+                                        }
+                                    }
+                                }
+
                             }
-                            else
+                            else if (addingRepayment)
                             {
                                 decimal amount;
                                 if (Decimal.TryParse(message.Text.Trim(), out amount))
@@ -158,93 +205,70 @@ internal class UpdateService : IUpdateService
                                         Amount = amount,
                                         Date = DateTime.UtcNow,
                                         ProfileId = userProfile?.ProfileId,
-                                        Store = storeName,
-                                        Type = (int)TransactionType.Payment,
-                                        UserId = userId
+                                        Store = null,
+                                        Type = (int)TransactionType.Repayment,
+                                        UserId = tgUser?.Id
                                     };
 
                                     bool successTran = _transactionService.AddTransaction(transaction) != null;
                                     if (successTran)
                                     {
-                                        await SendMessage(String.Format(Messages.PaymentHasBeenSaved, storeName, amount.ToString()));
+                                        await SendMessage(Messages.RepaymentHasBeenSaved);
                                         ResetFlags();
                                     }
                                 }
                             }
-                            
-                        }
-                        else if (addingRepayment)
-                        {
-                            decimal amount;
-                            if (Decimal.TryParse(message.Text.Trim(), out amount))
+                            else if (addingProfile)
                             {
-                                Transaction transaction = new Transaction()
-                                {
-                                    Id = Guid.NewGuid(),
-                                    Amount = amount,
-                                    Date = DateTime.UtcNow,
-                                    ProfileId = userProfile?.ProfileId,
-                                    Store = null,
-                                    Type = (int)TransactionType.Repayment,
-                                    UserId = userId
-                                };
 
-                                bool successTran = _transactionService.AddTransaction(transaction) != null;
-                                if (successTran)
+                                if (addingRegistrationToken)
                                 {
-                                    await SendMessage(Messages.RepaymentHasBeenSaved);
-                                    ResetFlags();
-                                }
-                            }
-                        }
-                        else if (addingProfile)
-                        {
-
-                            if (addingRegistrationToken)
-                            {
-                                string registrationToken = message.Text.Trim();
-                                if (!String.Equals(profile?.RegistrationToken.ToString(), registrationToken))
-                                {
-                                    await SendMessage(Messages.WrongRegistrationToken);
-                                    ResetFlags();
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                string profileName = message.Text.Trim();
-                                (bool newProfile, profile) = _profileService.CreateProfile(profileName).Result;
-
-                                if (newProfile)
-                                {
-                                    await SendMessage(String.Format(Messages.ProfileHasBeenCreated, profile.Name, profile.RegistrationToken));
-                                    await SendMessage(message: profile.RegistrationToken.ToString());
+                                    string registrationToken = message.Text.Trim();
+                                    if (!String.Equals(profile?.RegistrationToken.ToString(), registrationToken))
+                                    {
+                                        await SendMessage(Messages.WrongRegistrationToken);
+                                        ResetFlags();
+                                        break;
+                                    }
                                 }
                                 else
                                 {
-                                    await SendMessage(String.Format(Messages.GetProfileRegistrationToken, profileName));
-                                    addingRegistrationToken = true;
-                                    break;
+                                    string profileName = message.Text.Trim();
+                                    (bool newProfile, profile) = _profileService.CreateProfile(profileName).Result;
+
+                                    if (newProfile)
+                                    {
+                                        await SendMessage(String.Format(Messages.ProfileHasBeenCreated, profile.Name, profile.RegistrationToken));
+                                        await SendMessage(message: profile.RegistrationToken.ToString());
+                                    }
+                                    else
+                                    {
+                                        await SendMessage(String.Format(Messages.GetProfileRegistrationToken, profileName));
+                                        addingRegistrationToken = true;
+                                        break;
+                                    }
+
+                                    if (profile == null)
+                                    {
+                                        await SendMessage(String.Format(Messages.ProfileHasNotBeenCreated, profileName));
+                                    }
                                 }
 
-                                if (profile == null)
+                                userProfile = _profileService.MapUserToTheProfile(tgUser?.Id, profile?.Id).Result;
+
+                                if (userProfile != null)
                                 {
-                                    await SendMessage(String.Format(Messages.ProfileHasNotBeenCreated, profileName));
+                                    await SendMessage(String.Format(Messages.UserHasBeenAddedToTheProfile, profile?.Name));
                                 }
+                                else
+                                {
+                                    await SendMessage(String.Format(Messages.UserHasNotBeenAddedToTheProfile, profile?.Name));
+                                }
+                                ResetFlags();
                             }
-
-                            userProfile = _profileService.MapUserToTheProfile(userId, profile?.Id).Result;
-
-                            if (userProfile != null)
-                            {
-                                await SendMessage(String.Format(Messages.UserHasBeenAddedToTheProfile, profile?.Name));
-                            }
-                            else
-                            {
-                                await SendMessage(String.Format(Messages.UserHasNotBeenAddedToTheProfile, profile?.Name));
-                            }
-                            ResetFlags();
+                            else await SendMessage(Messages.CommandIsNotRecognized);
                         }
+                        else await SendMessage(Messages.CommandIsNotRecognized);
                         break;
                 }
 
@@ -271,6 +295,16 @@ internal class UpdateService : IUpdateService
         addingProfile = false;
         addingRegistrationToken = false;
         storeName = null;
+    }
+
+    private bool UserChanged(User? user)
+    {
+        if (tgUser == null) return true;
+        else if (tgUser.Username == null || user == null || user.Username == null
+                || String.IsNullOrEmpty(tgUser.Username) || String.IsNullOrEmpty(user.Username)) 
+            throw new Exception(Messages.UserNameCanNotBeEmpty);
+        else if (!String.Equals(user.Username.Trim(), tgUser.Username.Trim())) return true;
+        else return false;
     }
 }
 

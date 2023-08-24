@@ -89,7 +89,9 @@ public class TransactionService : ITransactionService
                 repaymentTransactions.Where(x => x.UserId == participant.UserId).ToList().ForEach(x => actualParticipantAmount += x.Amount);
                 repaymentTransactions.Where(x => x.UserId != participant.UserId).ToList().ForEach(x => actualParticipantAmount -= x.Amount);
                 string? username = _tgUserService.GetFirstNameById(participant.UserId).Result;
-                balances.Append(String.Format("{0} - {1}", username, (actualParticipantAmount - prognosedParticipantAmount).ToString()));
+                decimal? difference = actualParticipantAmount - prognosedParticipantAmount;
+                decimal? result = difference < 0 ? difference : 0;
+                balances.Append(String.Format("{0}: {1}", username, result.ToString()));
                 balances.Append('\n');
             }
 

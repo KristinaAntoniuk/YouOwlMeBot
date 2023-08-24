@@ -14,7 +14,7 @@ public static class Messages
     public static string RepaymentHasBeenSaved = "Repayment has been saved.";
     public static string NoTransactions = "There are no transactions for the selected period";
     public static string ThereIsOnlyOneUserInTheProfile = "There is only one user mapped to the profile. Try to add at least one more to be able to count balances.";
-
+    public static string CommandIsNotRecognized = "Sorry, I can't recognize this command.";
     #region Profiles
     public static string YourProfileName = "Profile Name:";
     public static string ProfileHasBeenCreated = "The new profile - {0} has been created. Use this registration token to add new users:";
