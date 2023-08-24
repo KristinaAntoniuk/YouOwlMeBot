@@ -92,6 +92,11 @@ internal class UpdateService : IUpdateService
                         break;
                     case "/setnewprofile":
                         ResetFlags();
+                        if (UserChanged(message.From))
+                        {
+                            tgUser = _tgUserService.GetTgUser(message.From).Result;
+                            userProfile = _profileService.GetUserProfileByUserId(tgUser.Id).Result;
+                        }
                         await SendMessage(Messages.YourProfileName);
                         addingProfile = true;
                         break;
