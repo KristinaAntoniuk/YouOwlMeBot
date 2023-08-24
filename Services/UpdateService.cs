@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Globalization;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using YouOwlMeBot.Custom;
 using YouOwlMeBot.Models;
@@ -175,8 +176,11 @@ internal class UpdateService : IUpdateService
                                 }
                                 else
                                 {
-                                    decimal amount;
-                                    if (Decimal.TryParse(message.Text.Trim(), out amount))
+                                    string value = message.Text.Trim().Replace(",", ".");
+                                    NumberFormatInfo nfi = new NumberFormatInfo();
+                                    nfi.NumberDecimalSeparator = ".";
+
+                                    if (Decimal.TryParse(value, NumberStyles.Any, nfi, out decimal amount))
                                     {
                                         Transaction transaction = new Transaction()
                                         {
@@ -196,6 +200,7 @@ internal class UpdateService : IUpdateService
                                             ResetFlags();
                                         }
                                     }
+                                    else throw new Exception(Messages.NumberIsIncorrect);
                                 }
 
                             }
