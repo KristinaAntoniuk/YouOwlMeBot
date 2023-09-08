@@ -36,19 +36,4 @@ internal class TgUserDataProvider : ContextProvider, IDataProvider<TgUser>
 
         return await _dynamoDBContext.ScanAsync<TgUser>(conditions).GetRemainingAsync();
     }
-
-    internal async Task<TgUser> AddUser(Telegram.Bot.Types.User tgUser)
-    {
-        TgUser user = new()
-        {
-            Id = Guid.NewGuid(),
-            Username = tgUser.Username,
-            LastName = tgUser.LastName,
-            FirstName = tgUser.FirstName
-        };
-
-        await Save(user);
-
-        return user;
-    }
 }

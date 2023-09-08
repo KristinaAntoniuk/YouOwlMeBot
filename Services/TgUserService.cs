@@ -13,14 +13,14 @@ public class TgUserService : ITgUserService
     {
         userDataProvider = new TgUserDataProvider(dbContext);
     }
-    public async Task<TgUser> GetTgUser(User? user)
+    public async Task<TgUser?> GetTgUser(User? user)
     {
         if (user == null) throw new Exception(Messages.SenderIsEmpty);
         if (String.IsNullOrEmpty(user.Username)) throw new Exception(Messages.UserNameCanNotBeEmpty);
 
         IEnumerable<TgUser> users = await userDataProvider.GetByUsername(user.Username);
 
-        return users?.FirstOrDefault() ?? userDataProvider.AddUser(user).Result;
+        return users?.FirstOrDefault();
     }
 
     public async Task<string?> GetFirstNameById(Guid? userId)

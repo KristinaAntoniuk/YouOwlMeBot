@@ -67,6 +67,20 @@ public class TransactionDataProvider : ContextProvider, IDataProvider<Transactio
         return await _dynamoDBContext.ScanAsync<Transaction>(conditions).GetRemainingAsync();
     }
 
+    internal async Task<IEnumerable<Transaction>> GetAllPreviousMonth(Guid? profileId)
+    {
+        if (profileId == Guid.Empty) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
+
+        IEnumerable<ScanCondition> conditions = new List<ScanCondition>
+        {
+            new ScanCondition("Date", ScanOperator.GreaterThanOrEqual, new DateTime(DateTime.Now.Year, DateTime.Now.Month-1, 1)),
+            new ScanCondition("Date", ScanOperator.LessThan, new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)),
+            new ScanCondition("ProfileId", ScanOperator.Equal, profileId)
+        };
+
+        return await _dynamoDBContext.ScanAsync<Transaction>(conditions).GetRemainingAsync();
+    }
+
     internal async Task<IEnumerable<Transaction>> GetAllCurrentMonth(Guid? profileId, Guid? userId)
     {
         if (profileId == Guid.Empty || userId == Guid.Empty) throw new Exception(Messages.ArgumentsCanNotBeEmpty);

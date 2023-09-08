@@ -39,29 +39,33 @@ public class TransactionService : ITransactionService
         return await transactionDataProvider.GetAllCurrentMonth(profileId);
     }
 
+    public async Task<IEnumerable<Transaction>> GetAllPreviousMonth(Guid? profileId)
+    {
+        return await transactionDataProvider.GetAllPreviousMonth(profileId);
+    }
+
     public async Task<IEnumerable<Transaction>> GetAllCurrentMonth(Guid? profileId, Guid? userId)
     {
         return await transactionDataProvider.GetAllCurrentMonth(profileId, userId);
     }
 
-    public async Task<string?> GetLastPayments(Guid? profileId, int numberOfPayments)
+    public async Task<string?> GetCurrentPayments(Guid? profileId)
     {
         IEnumerable<Transaction> transactions = await GetAllCurrentMonth(profileId);
         if (!transactions.Any()) return null;
 
-        StringBuilder lastPayments = new StringBuilder();
-
-        foreach (Transaction trans in transactions.OrderByDescending(x => x.Date).Take(numberOfPayments))
-        {
-            string? username = await _tgUserService.GetFirstNameById(trans.UserId);
-            lastPayments.Append(trans.ToString(username));
-            lastPayments.Append('\n');
-        }
-
-        return lastPayments.ToString();
+        return await ConvertToString(transactions);
     }
 
-    public async Task<string?> GetBalances(Guid? profileId, bool currentMonth)
+    public async Task<string?> GetPreviousPayments(Guid? profileId)
+    {
+        IEnumerable<Transaction> transactions = await GetAllPreviousMonth(profileId);
+        if (!transactions.Any()) return null;
+
+        return await ConvertToString(transactions);
+    }
+
+    public async Task<string?> GetBalances(Guid? profileId)
     {
         if (profileId == null) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
         IEnumerable<TgUserProfile> participants = _profileService.GetUserProfileByProfileId(profileId).Result;
@@ -71,8 +75,7 @@ public class TransactionService : ITransactionService
         {
             StringBuilder balances = new StringBuilder();
 
-            IEnumerable<Transaction> allTransactions = currentMonth ? await GetAllCurrentMonth(profileId)
-                                                                    : await GetAll(profileId);
+            IEnumerable<Transaction> allTransactions = await GetAll(profileId);
 
             List<Transaction> paymentTransactions = allTransactions.Where(x => x.Type == (int)TransactionType.Payment).ToList();
             List<Transaction> repaymentTransactions = allTransactions.Where(x => x.Type == (int)TransactionType.Repayment).ToList();
@@ -98,5 +101,19 @@ public class TransactionService : ITransactionService
             return balances.ToString();
         }
         else { return Messages.ThereIsOnlyOneUserInTheProfile; }
+    }
+
+    private async Task<string?> ConvertToString(IEnumerable<Transaction> transactions)
+    {
+        StringBuilder lastPayments = new StringBuilder();
+
+        foreach (Transaction trans in transactions.OrderByDescending(x => x.Date))
+        {
+            string? username = await _tgUserService.GetFirstNameById(trans.UserId);
+            lastPayments.Append(trans.ToString(username));
+            lastPayments.Append('\n');
+        }
+
+        return lastPayments.ToString();
     }
 }

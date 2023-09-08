@@ -8,7 +8,9 @@ public interface ITransactionService
     Task<IEnumerable<Transaction>> GetAll(Guid? profileId);
     Task<IEnumerable<Transaction>> GetAll(Guid? profileId, Guid? userId);
     Task<IEnumerable<Transaction>> GetAllCurrentMonth(Guid? profileId);
+    Task<IEnumerable<Transaction>> GetAllPreviousMonth(Guid? profileId);
     Task<IEnumerable<Transaction>> GetAllCurrentMonth(Guid? profileId, Guid? userId);
-    Task<string?> GetBalances(Guid? profileId, bool currentMonth);
-    Task<string?> GetLastPayments(Guid? profileId, int numberOfPayments);
+    Task<string?> GetBalances(Guid? profileId);
+    Task<string?> GetCurrentPayments(Guid? profileId);
+    Task<string?> GetPreviousPayments(Guid? profileId);
 }
