@@ -73,8 +73,9 @@ public class TransactionDataProvider : ContextProvider, IDataProvider<Transactio
 
         IEnumerable<ScanCondition> conditions = new List<ScanCondition>
         {
-            new ScanCondition("Date", ScanOperator.GreaterThanOrEqual, new DateTime(DateTime.Now.Year, DateTime.Now.Month-1, 1)),
-            new ScanCondition("Date", ScanOperator.LessThan, new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)),
+            new ScanCondition("Date", ScanOperator.Between, 
+                              new object[] { new DateTime(DateTime.Now.Year, DateTime.Now.Month - 1, 1),
+                                             new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)}),
             new ScanCondition("ProfileId", ScanOperator.Equal, profileId)
         };
 

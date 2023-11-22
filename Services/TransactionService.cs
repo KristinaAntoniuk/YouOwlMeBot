@@ -1,5 +1,4 @@
-﻿using Amazon;
-using Amazon.DynamoDBv2.DataModel;
+﻿using Amazon.DynamoDBv2.DataModel;
 using System.Text;
 using YouOwlMeBot.Custom;
 using YouOwlMeBot.DataProviders;
@@ -47,6 +46,18 @@ public class TransactionService : ITransactionService
     public async Task<IEnumerable<Transaction>> GetAllCurrentMonth(Guid? profileId, Guid? userId)
     {
         return await transactionDataProvider.GetAllCurrentMonth(profileId, userId);
+    }
+
+    public async Task<decimal> GetTotalCurrentMonth(Guid? profileId)
+    {
+        IEnumerable<Transaction> transactions = await GetAllCurrentMonth(profileId);
+        return CountTotal(transactions);
+    }
+
+    public async Task<decimal> GetTotalPreviousMonth(Guid? profileId)
+    {
+        IEnumerable<Transaction> transactions = await GetAllPreviousMonth(profileId);
+        return CountTotal(transactions);
     }
 
     public async Task<string?> GetCurrentPayments(Guid? profileId)
@@ -115,5 +126,19 @@ public class TransactionService : ITransactionService
         }
 
         return lastPayments.ToString();
+    }
+
+    private decimal CountTotal(IEnumerable<Transaction> transactions)
+    {
+        if (!transactions.Any()) return 0;
+        decimal total = 0;
+
+        foreach (Transaction transaction in transactions)
+        {
+            if (transaction.Type == (int)TransactionType.Repayment) continue;
+            total += transaction.Amount;
+        }
+
+        return total;
     }
 }

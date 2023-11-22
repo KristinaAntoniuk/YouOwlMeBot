@@ -97,6 +97,26 @@ internal class UpdateService : IUpdateService
                             addingRepayment = true;
                         }
                         break;
+                    case "/showtotalcurrentmonth":
+                        if (!Initialize(message.From))
+                        {
+                            await SendMessage(Messages.BotIsNotAvailable);
+                            break;
+                        }
+
+                        decimal totalCurrentMonth = await _transactionService.GetTotalCurrentMonth(userProfile?.ProfileId);
+                        await SendMessage(totalCurrentMonth.ToString());
+                        break;
+                    case "/showtotalpreviousmonth":
+                        if (!Initialize(message.From))
+                        {
+                            await SendMessage(Messages.BotIsNotAvailable);
+                            break;
+                        }
+
+                        decimal totalPreviousMonth = await _transactionService.GetTotalPreviousMonth(userProfile?.ProfileId);
+                        await SendMessage(totalPreviousMonth.ToString());
+                        break;
                     case "/showcurrenttransactions":
                         if (!Initialize(message.From))
                         {
