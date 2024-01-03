@@ -71,10 +71,19 @@ public class TransactionDataProvider : ContextProvider, IDataProvider<Transactio
     {
         if (profileId == Guid.Empty) throw new Exception(Messages.ArgumentsCanNotBeEmpty);
 
+        int previousMonth = DateTime.Now.Month - 1;
+        int previousYear = DateTime.Now.Year;
+
+        if (previousMonth == 0)
+        {
+            previousMonth = 12;
+            previousYear = previousYear - 1;
+        }
+
         IEnumerable<ScanCondition> conditions = new List<ScanCondition>
         {
             new ScanCondition("Date", ScanOperator.Between, 
-                              new object[] { new DateTime(DateTime.Now.Year, DateTime.Now.Month - 1, 1),
+                              new object[] { new DateTime(previousYear, previousMonth, 1),
                                              new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)}),
             new ScanCondition("ProfileId", ScanOperator.Equal, profileId)
         };
