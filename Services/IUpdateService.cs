@@ -1,8 +1,11 @@
-﻿using Telegram.Bot.Types;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using Telegram.Bot.Types;
 
-namespace YouOwlMeBot.Services;
-
-public interface IUpdateService
+namespace YouOwlMeBot.Services
 {
-    Task HandleUpdate(Update update, CancellationToken cancellationToken = default);
+    public interface IUpdateService
+    {
+        Task HandleUpdate(Update update, CancellationToken cancellationToken = default);
+    }
 }
